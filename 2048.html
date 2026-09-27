@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- スマホで画面が勝手にズームしたり揺れたりしない設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048 | MY WEB LAB</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #faf8ef;
+            color: #776e65;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            /* スワイプ時に画面全体がスクロールしないように保護 */
+            touch-action: none;
+        }
+
+        .header {
+            width: 320px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 40px;
+            margin: 0;
+            color: #776e65;
+        }
+
+        .scores {
+            display: flex;
+            gap: 10px;
+        }
+
+        .score-box {
+            background: #bbada0;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 3px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .score-box span {
+            display: block;
+            font-size: 18px;
+        }
+
+        /* 4x4のゲーム盤 */
+        .grid-container {
+            width: 320px;
+            height: 320px;
+            background-color: #bbada0;
+            border-radius: 6px;
+            padding: 10px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .cell {
+            background-color: rgba(238, 228, 218, 0.35);
+            border-radius: 3px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #776e65;
+        }
+
+        /* 数字ごとの色設定 */
+        .val-2 { background: #eee4da; color: #776e65; }
+        .val-4 { background: #ede0c8; color: #776e65; }
+        .val-8 { background: #f2b179; color: #f9f6f2; }
+        .val-16 { background: #f59563; color: #f9f6f2; }
+        .val-32 { background: #f67c5f; color: #f9f6f2; }
+        .val-64 { background: #f65e3b; color: #f9f6f2; }
+        .val-128 { background: #edcf72; color: #f9f6f2; font-size: 20px; }
+        .val-256 { background: #edcc61; color: #f9f6f2; font-size: 20px; }
+        .val-512 { background: #edc850; color: #f9f6f2; font-size: 20px; }
+        .val-1024 { background: #edc53f; color: #f9f6f2; font-size: 16px; }
+        .val-2048 { background: #edc22e; color: #f9f6f2; font-size: 16px; }
+
+        .controls {
+            margin-top: 20px;
+            width: 320px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            background: #8f7a66;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div style="width: 320px; text-align: left; margin-bottom: 10px;">
+        <a href="index.html" style="text-decoration:none; color:#776e65; font-size:12px;">← ポータルへ戻る</a>
+    </div>
+
+    <div class="header">
+        <h1>2048</h1>
+        <div class="scores">
+            <div class="score-box">SCORE<span id="score">0</span></div>
+            <div class="score-box">BEST<span id="bestScore">0</span></div>
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid">
+        <!-- JavaScriptで16個のセルを自動生成 -->
+    </div>
+
+    <div class="controls">
+        <p style="font-size: 12px; margin: 0;">スワイプ または 矢印キーで操作</p>
+        <button onclick="resetGame()">リセット</button>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const scoreDisplay = document.getElementById('score');
+        const bestScoreDisplay = document.getElementById('bestScore');
+        
+        let board = Array(16).fill(0);
+        let score = 0;
+        let bestScore = localStorage.getItem('2048_best') || 0;
+
+        bestScoreDisplay.textContent = bestScore;
+
+        // ゲーム初期化
+        function init() {
+            grid.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}`;
+                grid.appendChild(cell);
+            }
+            addNumber();
+            addNumber();
+            updateBoard();
+        }
+
+        // 空いている場所に「2」または「4」を追加
+        function addNumber() {
+            let emptyCells = board.map((val, idx) => val === 0 ? idx : null).filter(val => val !== null);
+            if (emptyCells.length > 0) {
+                let randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                board[randomCell] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+
+        // 画面の更新
+        function updateBoard() {
+            for (let i = 0; i < 16; i++) {
+                const cell = document.getElementById(`cell-${i}`);
+                cell.textContent = board[i] === 0 ? '' : board[i];
+                cell.className = 'cell' + (board[i] > 0 ? ` val-${board[i]}` : '');
+            }
+            scoreDisplay.textContent = score;
+            if (score > bestScore) {
+                bestScore = score;
+                bestScoreDisplay.textContent = bestScore;
+                localStorage.setItem('2048_best', bestScore);
+            }
+        }
+
+        // スライド・合体ロジック（1列分）
+        function slide(row) {
+            let arr = row.filter(val => val !== 0);
+            for (let i = 0; i < arr.length - 1; i++) {
+                if (arr[i] === arr[i + 1]) {
+                    arr[i] *= 2;
+                    score += arr[i];
+                    arr[i + 1] = 0;
+                }
+            }
+            arr = arr.filter(val => val !== 0);
+            while (arr.length < 4) arr.push(0);
+            return arr;
+        }
+
+        // キー・タッチ共通の移動処理
+        function move(direction) {
+            let oldBoard = [...board];
+
+            for (let i = 0; i < 4; i++) {
+                let row = [];
+                for (let j = 0; j < 4; j++) {
+                    if (direction === 'LEFT' || direction === 'RIGHT') row.push(board[i * 4 + j]);
+                    else row.push(board[j * 4 + i]);
+                }
+
+                if (direction === 'RIGHT' || direction === 'DOWN') row.reverse();
+                row = slide(row);
+                if (direction === 'RIGHT' || direction === 'DOWN') row.reverse();
+
+                for (let j = 0; j < 4; j++) {
+                    if (direction === 'LEFT' || direction === 'RIGHT') board[i * 4 + j] = row[j];
+                    else board[j * 4 + i] = row[j];
+                }
+            }
+
+            if (JSON.stringify(oldBoard) !== JSON.stringify(board)) {
+                addNumber();
+                updateBoard();
+            }
+        }
+
+        // --- PC（キーボード）操作 ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') move('LEFT');
+            if (e.key === 'ArrowRight') move('RIGHT');
+            if (e.key === 'ArrowUp') move('UP');
+            if (e.key === 'ArrowDown') move('DOWN');
+        });
+
+        // --- スマホ（スワイプ）操作 ---
+        let startX = 0;
+        let startY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (!startX || !startY) return;
+
+            let diffX = e.changedTouches[0].clientX - startX;
+            let diffY = e.changedTouches[0].clientY - startY;
+
+            // 誤作動防止（一定距離以上スワイプした時だけ反応させる）
+            if (Math.abs(diffX) > 30 || Math.abs(diffY) > 30) {
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // 横方向のスワイプ
+                    if (diffX > 0) move('RIGHT');
+                    else move('LEFT');
+                } else {
+                    // 縦方向のスワイプ
+                    if (diffY > 0) move('DOWN');
+                    else move('UP');
+                }
+            }
+
+            startX = 0;
+            startY = 0;
+        }, { passive: true });
+
+        function resetGame() {
+            board = Array(16).fill(0);
+            score = 0;
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>
